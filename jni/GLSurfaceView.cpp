@@ -24,7 +24,6 @@ Java_com_showkith264_MainActivity_stringFromJNICPP(JNIEnv *env, jclass cls, jbyt
 	{
 		__android_log_print(ANDROID_LOG_VERBOSE, "testing...", "Value %d", content_array[i]);
 	}
-
 	return array_length;
 
 }

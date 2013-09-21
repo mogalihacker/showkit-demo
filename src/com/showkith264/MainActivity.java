@@ -5,9 +5,12 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
+
+import org.jcodec.codecs.h264.io.model.NALUnit;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -100,6 +103,8 @@ public class MainActivity extends Activity {
 				// mVideoView.setVideoURI(Uri.parse("android.resource://com.example.glsurfaceview/"
 				// + R.raw.aa));
 				mVideoView.setZOrderOnTop(true);
+				int i = mVideoView.getDuration();
+				i = i * 30;
 				mVideoView.setMediaController(new MediaController(
 						MainActivity.this));
 				mVideoView.requestFocus();
@@ -115,6 +120,12 @@ public class MainActivity extends Activity {
 					// Toast.makeText(this.getApplicationContext(),""+file.length(),
 					// Toast.LENGTH_LONG).show();
 					// stringFromJNICPP(data, length);
+					ByteBuffer buffer = ByteBuffer.wrap(data);
+
+					NALUnit nalunit = NALUnit.read(buffer);
+					System.out.println("nal_ref_idc : " + nalunit.nal_ref_idc);
+					System.out.println("nalunit : "
+							+ nalunit.type.NON_IDR_SLICE.getName().toString());
 					Toast.makeText(MainActivity.this,
 							"" + stringFromJNICPP(data, length),
 							Toast.LENGTH_LONG).show();
@@ -212,8 +223,9 @@ public class MainActivity extends Activity {
 
 		mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
 		// mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.DEFAULT);
-
+		mediaRecorder.setVideoFrameRate(30);
 		mediaRecorder.setOutputFile("/sdcard/myvideo.mp4");
+
 		mediaRecorder.setPreviewDisplay(myCameraSurfaceView.getHolder()
 				.getSurface());
 
