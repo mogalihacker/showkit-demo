@@ -20,18 +20,26 @@ import android.graphics.Color;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.media.MediaRecorder;
+import android.net.LocalSocket;
+import android.net.LocalSocketAddress;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.content.LocalBroadcastManager;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.MediaController;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
@@ -99,7 +107,7 @@ public class MainActivity extends Activity {
 				videoView.setVisibility(View.VISIBLE);
 				mVideoView.setVisibility(View.VISIBLE);
 
-				mVideoView.setVideoPath("/storage/sdcard0/myvideo.mp4");
+				mVideoView.setVideoPath("/sdcard/myvideo.mp4");
 				// mVideoView.setVideoURI(Uri.parse("android.resource://com.example.glsurfaceview/"
 				// + R.raw.aa));
 
@@ -118,17 +126,36 @@ public class MainActivity extends Activity {
 					is = new FileInputStream(file);
 					is.read(data);
 					int length = (int) file.length();
-					// Toast.makeText(this.getApplicationContext(),""+file.length(),
-					// Toast.LENGTH_LONG).show();
-					// stringFromJNICPP(data, length);
-
 					ByteBuffer buffer = ByteBuffer.wrap(data);
+					LocalSocket clientSocket = new LocalSocket();
+					
+					
+					
 					NALUnit nalunit = NALUnit.read(buffer);
 					System.out.println("nal_ref_idc : " + nalunit.nal_ref_idc);
 					System.out.println("nalunit  Value: "
 							+ NALUnitType.NON_IDR_SLICE.getValue());
 					System.out.println("nalunit Name : "
 							+ NALUnitType.NON_IDR_SLICE.getName().toString());
+					LayoutInflater inflater = getLayoutInflater();
+
+					View layout = inflater
+							.inflate(
+									R.layout.custom_toast,
+									(ViewGroup) findViewById(R.id.custom_toast_layout_id));
+					ImageView image = (ImageView) layout
+							.findViewById(R.id.image);
+					image.setImageResource(R.drawable.ic_launcher);
+					TextView text = (TextView) layout.findViewById(R.id.text);
+					text.setText("nalunit  Value: "
+							+ NALUnitType.NON_IDR_SLICE.getValue() + "\n"
+							+ "nalunit Name : "
+							+ NALUnitType.NON_IDR_SLICE.getName().toString());
+					Toast toast = new Toast(getApplicationContext());
+					toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
+					toast.setDuration(Toast.LENGTH_LONG);
+					toast.setView(layout);
+					toast.show();
 
 				} catch (FileNotFoundException e) {
 					// TODO Auto-generated catch block
