@@ -95,13 +95,13 @@ public class MainActivity extends Activity {
 						LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
 				VideoView mVideoView = (VideoView) videoView
 						.findViewById(R.id.videoView1);
-
 				videoView.setVisibility(View.VISIBLE);
 				mVideoView.setVisibility(View.VISIBLE);
 
 				mVideoView.setVideoPath("/storage/sdcard0/myvideo.mp4");
 				// mVideoView.setVideoURI(Uri.parse("android.resource://com.example.glsurfaceview/"
 				// + R.raw.aa));
+
 				mVideoView.setZOrderOnTop(true);
 				int i = mVideoView.getDuration();
 				i = i * 30;
@@ -120,15 +120,12 @@ public class MainActivity extends Activity {
 					// Toast.makeText(this.getApplicationContext(),""+file.length(),
 					// Toast.LENGTH_LONG).show();
 					// stringFromJNICPP(data, length);
-					ByteBuffer buffer = ByteBuffer.wrap(data);
 
+					ByteBuffer buffer = ByteBuffer.wrap(data);
 					NALUnit nalunit = NALUnit.read(buffer);
 					System.out.println("nal_ref_idc : " + nalunit.nal_ref_idc);
 					System.out.println("nalunit : "
 							+ nalunit.type.NON_IDR_SLICE.getName().toString());
-					Toast.makeText(MainActivity.this,
-							"" + stringFromJNICPP(data, length),
-							Toast.LENGTH_LONG).show();
 
 				} catch (FileNotFoundException e) {
 					// TODO Auto-generated catch block
