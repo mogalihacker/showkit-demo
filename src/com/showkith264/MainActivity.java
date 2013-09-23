@@ -11,6 +11,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import org.jcodec.codecs.h264.io.model.NALUnit;
+import org.jcodec.codecs.h264.io.model.NALUnitType;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -124,8 +125,10 @@ public class MainActivity extends Activity {
 					ByteBuffer buffer = ByteBuffer.wrap(data);
 					NALUnit nalunit = NALUnit.read(buffer);
 					System.out.println("nal_ref_idc : " + nalunit.nal_ref_idc);
-					System.out.println("nalunit : "
-							+ nalunit.type.NON_IDR_SLICE.getName().toString());
+					System.out.println("nalunit  Value: "
+							+ NALUnitType.NON_IDR_SLICE.getValue());
+					System.out.println("nalunit Name : "
+							+ NALUnitType.NON_IDR_SLICE.getName().toString());
 
 				} catch (FileNotFoundException e) {
 					// TODO Auto-generated catch block
@@ -134,17 +137,6 @@ public class MainActivity extends Activity {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				// String test = "ABC";
-				// byte[] message = test.getBytes();
-				// int size = message.length;
-				// // public static native void SendMessage( message,size);
-				// //size
-				// // = message
-
-				// String inputname = "ssssws";
-				// Toast.makeText(MainActivity.this,
-				// "" + stringFromJNICPP(message, size), Toast.LENGTH_LONG)
-				// .show();
 
 			}
 
@@ -361,17 +353,11 @@ class ClearRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void onDrawFrame(GL10 gl) {
-		gl.glClearColor(mRed, mGreen, mBlue, 1.0f);
-		gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
+
 	}
 
 	public void setColor(float r, float g, float b) {
-		mRed = r;
-		mGreen = g;
-		mBlue = b;
+
 	}
 
-	private float mRed;
-	private float mGreen;
-	private float mBlue;
 }
