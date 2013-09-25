@@ -1,17 +1,18 @@
 package com.showkith264;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
-
-import org.jcodec.codecs.h264.io.model.NALUnit;
-import org.jcodec.codecs.h264.io.model.NALUnitType;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -20,12 +21,13 @@ import android.graphics.Color;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.media.MediaRecorder;
+import android.net.LocalServerSocket;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -53,6 +55,20 @@ public class MainActivity extends Activity {
 	boolean recording;
 	private GLSurfaceView mGLView;
 	FrameLayout myCameraPreview;
+	File file = null, file2 = new File(
+			Environment.getExternalStorageDirectory(), "myvideo.mp4");
+	String localhost = "127.0.0.1";
+	final int port = 2303;
+
+	// for client side implementation
+	LocalSocket outSocket = null;
+	Socket s1 = null;
+	BufferedReader br = null;
+	PrintWriter p = null;
+
+	// for server side implementation.
+	LocalServerSocket mLocalServerSocket = null;
+	LocalSocket mLocalClientSocket = null;
 
 	public native int stringFromJNICPP(byte[] message, int size);
 
@@ -67,9 +83,9 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 
 		recording = false;
-
 		setContentView(R.layout.main);
 
+		startServer();
 		// Get Camera for preview
 		myCamera = getCameraInstance();
 		if (myCamera == null) {
@@ -85,13 +101,12 @@ public class MainActivity extends Activity {
 		myPreview = (Button) findViewById(R.id.mypreview);
 		myButton.setOnClickListener(myButtonOnClickListener);
 		mGLView.setBackgroundColor(Color.RED);
-		myPreview.setOnClickListener(new OnClickListener() {
 
+		myPreview.setOnClickListener(new OnClickListener() {
 			@SuppressLint("NewApi")
 			@Override
 			public void onClick(View v) {
 				mGLView = new ClearGLSurfaceView(MainActivity.this);
-
 				// mGLView.draw(canvas);
 				// setContentView(mGLView);
 				GLSurfaceView glSurfaceView = new ClearGLSurfaceView(
@@ -106,11 +121,9 @@ public class MainActivity extends Activity {
 						.findViewById(R.id.videoView1);
 				videoView.setVisibility(View.VISIBLE);
 				mVideoView.setVisibility(View.VISIBLE);
-
 				mVideoView.setVideoPath("/sdcard/myvideo.mp4");
 				// mVideoView.setVideoURI(Uri.parse("android.resource://com.example.glsurfaceview/"
 				// + R.raw.aa));
-
 				mVideoView.setZOrderOnTop(true);
 				int i = mVideoView.getDuration();
 				i = i * 30;
@@ -119,18 +132,14 @@ public class MainActivity extends Activity {
 				mVideoView.requestFocus();
 				mVideoView.start();
 				try {
-
-					File file = new File(Environment
-							.getExternalStorageDirectory(), "myvideo.mp4");
+					file = new File(Environment.getExternalStorageDirectory(),
+							"myvideo.mp4");
 					byte[] data = new byte[(int) file.length()];
 					is = new FileInputStream(file);
 					is.read(data);
-					int length = (int) file.length();
+					// int length = (int) file.length();
 					ByteBuffer buffer = ByteBuffer.wrap(data);
-					LocalSocket clientSocket = new LocalSocket();
-					
-					
-					
+
 					NALUnit nalunit = NALUnit.read(buffer);
 					System.out.println("nal_ref_idc : " + nalunit.nal_ref_idc);
 					System.out.println("nalunit  Value: "
@@ -158,32 +167,73 @@ public class MainActivity extends Activity {
 					toast.show();
 
 				} catch (FileNotFoundException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-
 			}
-
 		});
+	}
 
+	private void startServer() {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					mLocalServerSocket = new LocalServerSocket(localhost);
+				} catch (Exception e) {
+					Log.e("!!!!!!!!!!!!!!!!", "Error creating server socket: "
+							+ e);
+					return;
+				}
+				while (true) {
+					FileOutputStream fop = null;
+					if (mLocalServerSocket == null) {
+						break;
+					}
+					try {
+						mLocalClientSocket = mLocalServerSocket.accept();
+						InputStream in = mLocalClientSocket.getInputStream();
+						// out = new File(mContext.getExternalFilesDir(null),
+						// "testfile.mp4");
+						fop = new FileOutputStream(file2);
+						int len = 0;
+						byte[] buffer = new byte[64 * 1024];
+						while ((len = in.read(buffer)) >= 0) {
+							Log.i("!~!!!!!!!!!", "Writing " + len + " bytes");
+							fop.write(buffer, 0, len);
+						}
+					} catch (Exception e) {
+
+						e.printStackTrace();
+					} finally {
+						try {
+							fop.close();
+							mLocalClientSocket.close();
+							mLocalServerSocket.close();
+							mLocalServerSocket = null;
+						} catch (Exception e2) {
+							e2.printStackTrace();
+						}
+					}
+				}
+			}
+		}).start();
 	}
 
 	Button.OnClickListener myButtonOnClickListener = new Button.OnClickListener() {
 
 		@Override
 		public void onClick(View v) {
-			// TODO Auto-generated method stub
 			if (recording) {
 				// stop recording and release camera
 				mediaRecorder.stop(); // stop the recording
 				releaseMediaRecorder(); // release the MediaRecorder object
 				myButton.setText("Rec");
 				recording = false;
-				// Exit after saved
+				destroyConnections();
 
+				// Exit after saved
 			} else {
 
 				// Release Camera before MediaRecorder start
@@ -199,12 +249,27 @@ public class MainActivity extends Activity {
 				mediaRecorder.start();
 				recording = true;
 				myButton.setText("STOP");
+
 			}
 		}
+
 	};
 
+	private void destroyConnections() {
+		try {
+			if (mLocalServerSocket != null) {
+				mLocalClientSocket.close();
+				mLocalServerSocket.close();
+			}
+			mLocalServerSocket = null;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.out.println("Closing the app.");
+		Toast.makeText(getBaseContext(), "dfsdfsd", Toast.LENGTH_LONG).show();
+	}
+
 	private Camera getCameraInstance() {
-		// TODO Auto-generated method stub
 		Camera c = null;
 		try {
 			c = Camera.open(); // attempt to get a Camera instance
@@ -220,42 +285,48 @@ public class MainActivity extends Activity {
 	 */
 	private boolean prepareMediaRecorder() {
 		myCamera = getCameraInstance();
-
 		Parameters parameters = myCamera.getParameters();
-
 		myCamera.setParameters(parameters);
-
 		mediaRecorder = new MediaRecorder();
-
 		myCamera.unlock();
 		mediaRecorder.setCamera(myCamera);
-
 		mediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
 		mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-
 		mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-
 		mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-
 		mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
-		// mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.DEFAULT);
 		mediaRecorder.setVideoFrameRate(30);
-		mediaRecorder.setOutputFile("/sdcard/myvideo.mp4");
+		// mediaRecorder.setOutputFile("/sdcard/myvideo.mp4");
 
-		mediaRecorder.setPreviewDisplay(myCameraSurfaceView.getHolder()
-				.getSurface());
+		outSocket = new LocalSocket();
 
 		try {
+			outSocket.connect(new LocalSocketAddress(localhost));
+			outSocket.setSendBufferSize(64 * 1024);
+
+			mediaRecorder.setOutputFile(outSocket.getFileDescriptor());
+			mediaRecorder.setPreviewDisplay(myCameraSurfaceView.getHolder()
+					.getSurface());
 			mediaRecorder.prepare();
+
 		} catch (IllegalStateException e) {
+			System.out.println("exception IllegalStateException : " + e);
 			releaseMediaRecorder();
 			return false;
+
 		} catch (IOException e) {
+			System.out.println("IOException : " + e);
 			releaseMediaRecorder();
 			return false;
+
+		} finally {
+			try {
+				outSocket.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 		return true;
-
 	}
 
 	@Override
@@ -273,6 +344,14 @@ public class MainActivity extends Activity {
 			mediaRecorder.release(); // release the recorder object
 			mediaRecorder = null;
 			myCamera.lock(); // lock camera for later use
+			try {
+				// if(outSocket!=null)
+				outSocket.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
 		}
 	}
 
@@ -292,7 +371,6 @@ public class MainActivity extends Activity {
 		public MyCameraSurfaceView(Context context, Camera camera) {
 			super(context);
 			mCamera = camera;
-
 			// Install a SurfaceHolder.Callback so we get notified when the
 			// underlying surface is created and destroyed.
 			mHolder = getHolder();
@@ -307,45 +385,47 @@ public class MainActivity extends Activity {
 			// If your preview can change or rotate, take care of those events
 			// here.
 			// Make sure to stop the preview before resizing or reformatting it.
-
 			if (mHolder.getSurface() == null) {
 				// preview surface does not exist
 				return;
 			}
-
 			// stop preview before making changes
 			try {
 				mCamera.stopPreview();
 			} catch (Exception e) {
 				// ignore: tried to stop a non-existent preview
+				System.out
+						.println("exception :ignore: tried to stop a non-existent preview "
+								+ e);
 			}
-
 			// make any resize, rotate or reformatting changes here
-
 			// start preview with new settings
 			try {
 				mCamera.setPreviewDisplay(mHolder);
 				mCamera.startPreview();
-
 			} catch (Exception e) {
+				System.out.println("exception : 111 " + e);
 			}
 		}
 
 		@Override
 		public void surfaceCreated(SurfaceHolder holder) {
-			// TODO Auto-generated method stub
 			// The Surface has been created, now tell the camera where to draw
 			// the preview.
 			try {
 				mCamera.setPreviewDisplay(holder);
+				System.out.println("surface created:before preview");
 				mCamera.startPreview();
+				System.out.println("surface created:after preview");
+
 			} catch (IOException e) {
+				System.out.println("IO Exception 112");
 			}
 		}
 
 		@Override
 		public void surfaceDestroyed(SurfaceHolder holder) {
-			// TODO Auto-generated method stub
+			System.out.println("surface distroyed");
 
 		}
 	}
@@ -371,6 +451,7 @@ class ClearGLSurfaceView extends GLSurfaceView {
 }
 
 class ClearRenderer implements GLSurfaceView.Renderer {
+
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 		// Do nothing special.
 	}
